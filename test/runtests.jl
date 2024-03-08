@@ -1,4 +1,4 @@
-using SimpleBoundaryValueDiffEq
+using .SimpleBoundaryValueDiffEq
 using Test
 using Aqua
 using JET
