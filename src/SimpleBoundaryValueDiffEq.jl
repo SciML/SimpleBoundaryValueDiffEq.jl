@@ -6,11 +6,12 @@ import DiffEqBase: solve
 using FiniteDiff
 using SimpleNonlinearSolve
 
-abstract type AbstractSimpleBoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractODEAlgorithm end
+abstract type SimpleBoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
+abstract type AbstractSimpleMIRK <: SimpleBoundaryValueDiffEqAlgorithm end
 
 include("mirk.jl")
 
-function solve(prob::BVProblem, alg::AbstractSimpleBoundaryValueDiffEqAlgorithm, args...; kwargs...)
+function solve(prob::BVProblem, alg::SimpleBoundaryValueDiffEqAlgorithm, args...; kwargs...)
     cache = init(prob, alg, args...; kwargs...)
     return solve!(cache)
 end

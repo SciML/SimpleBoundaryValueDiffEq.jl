@@ -1,15 +1,15 @@
-struct SimpleMIRK4 <: AbstractSimpleBoundaryValueDiffEqAlgorithm
-    nlsolve
+struct SimpleMIRK4{N} <: AbstractSimpleMIRK
+    nlsolve::N
 end
 SimpleMIRK4(; nlsolve = SimpleNewtonRaphson()) = SimpleMIRK4(nlsolve)
 
-struct SimpleMIRK5 <: AbstractSimpleBoundaryValueDiffEqAlgorithm
-    nlsolve
+struct SimpleMIRK5{N} <: AbstractSimpleMIRK
+    nlsolve::N
 end
 SimpleMIRK5(; nlsolve = SimpleNewtonRaphson()) = SimpleMIRK5(nlsolve)
 
-struct SimpleMIRK6 <: AbstractSimpleBoundaryValueDiffEqAlgorithm
-    nlsolve
+struct SimpleMIRK6{N} <: AbstractSimpleMIRK
+    nlsolve::N
 end
 SimpleMIRK6(; nlsolve = SimpleNewtonRaphson()) = SimpleMIRK6(nlsolve)
 
@@ -54,7 +54,9 @@ mutable struct SimpleMIRKCache{iip, T}
     kwargs
 end
 
-function SciMLBase.__init(prob::BVProblem, alg::AbstractSimpleBoundaryValueDiffEqAlgorithm; dt = 0.0, kwargs...)
+Base.eltype(::SimpleMIRKCache{iip, T}) where {iip, T} = T
+
+function SciMLBase.__init(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     N = Int(cld(prob.tspan[2] - prob.tspan[1], dt))
     mesh = collect(range(prob.tspan[1], prob.tspan[2], length = N + 1))
