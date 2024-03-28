@@ -1,14 +1,18 @@
 using SimpleBoundaryValueDiffEq
 using Test
 using Aqua
+using BVProblemLibrary
 using JET
+using SafeTestsets
 
 @testset "SimpleBoundaryValueDiffEq.jl" begin
     @testset "Code quality (Aqua.jl)" begin
-        Aqua.test_all(SimpleBoundaryValueDiffEq)
+        include("aqua_tests.jl")
     end
     @testset "Code linting (JET.jl)" begin
         JET.test_package(SimpleBoundaryValueDiffEq; target_defined_modules = true)
     end
-    # Write your tests here.
+    @testset "Test MIRK methods convergence" begin
+        include("mirk_tests.jl")
+    end
 end
