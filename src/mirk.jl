@@ -26,31 +26,31 @@ alg_stage(alg::SimpleMIRK5) = 4
 alg_order(alg::SimpleMIRK6) = 6
 alg_stage(alg::SimpleMIRK6) = 5
 
-mutable struct SimpleMIRKCache{iip, T}
-    prob::Any
-    alg::Any
-    mesh::Any
-    N::Any
-    M::Any
-    p::Any
-    pt::Any
+@concrete mutable struct SimpleMIRKCache{iip, T}
+    prob
+    alg
+    mesh
+    N
+    M
+    p
+    pt
 
-    order::Any
-    stage::Any
+    order
+    stage
 
-    c::Any
-    v::Any
-    b::Any
-    x::Any
+    c
+    v
+    b
+    x
 
-    y::Any
-    y0::Any
-    residual::Any
-    discrete_stages::Any
-    guess::Any
+    y
+    y0
+    residual
+    discrete_stages
+    guess
 
-    dt::Any
-    kwargs::Any
+    dt
+    kwargs
 end
 
 Base.eltype(::SimpleMIRKCache{iip, T}) where {iip, T} = T
@@ -71,11 +71,8 @@ function SciMLBase.__init(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     discrete_stages = [similar(u0) for i in 1:stage]
 
     c, v, b, x = constructSimpleMIRK(alg)
-    return SimpleMIRKCache{iip, T}(prob, alg, mesh, N, M, prob.p, pt,
-        order, stage,
-        c, v, b, x,
-        y, y0, residual, discrete_stages, guess,
-        dt, kwargs)
+    return SimpleMIRKCache{iip, T}(prob, alg, mesh, N, M, prob.p, pt, order, stage, c, v, b,
+        x, y, y0, residual, discrete_stages, guess, dt, kwargs)
 end
 
 function SciMLBase.solve!(cache::SimpleMIRKCache{iip, T}) where {iip, T}
@@ -198,16 +195,16 @@ function constructSimpleMIRK(alg::SimpleMIRK6)
     return c, v, b, x
 end
 
-function flatten_vector!(dest::T1,
-        src::Vector{T2}) where {T1 <: AbstractArray, T2 <: AbstractArray}
+function flatten_vector!(
+        dest::T1, src::Vector{T2}) where {T1 <: AbstractArray, T2 <: AbstractArray}
     M = length(src[1])
     for i in eachindex(src)
         dest[(((i - 1) * M) + 1):(i * M)] = src[i]
     end
 end
 
-function unflatten_vector!(dest::Vector{T1},
-        src::T2) where {T1 <: AbstractArray, T2 <: AbstractArray}
+function unflatten_vector!(
+        dest::Vector{T1}, src::T2) where {T1 <: AbstractArray, T2 <: AbstractArray}
     M = length(dest[1])
     for i in 1:length(dest)
         copyto!(dest[i], src[((M * (i - 1)) + 1):(M * i)])

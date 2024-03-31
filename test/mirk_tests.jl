@@ -2,7 +2,7 @@ using SimpleBoundaryValueDiffEq, Test, BVProblemLibrary
 using LinearAlgebra
 
 for i in 1:18
-    # 15 no analytical solution, 17 failed
+    # 15th has no analytical solution, 17th failed
     if (i == 15) || (i == 17)
         continue
     end

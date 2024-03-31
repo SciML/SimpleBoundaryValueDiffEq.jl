@@ -1,5 +1,6 @@
 module SimpleBoundaryValueDiffEq
 
+using ConcreteStructs
 using Reexport
 import DiffEqBase: solve
 @reexport using DiffEqBase
