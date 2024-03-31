@@ -12,7 +12,7 @@ SimpleNonlinearSolve = "727e6d20-b764-4bd8-a329-72de5adea6c7"
 
 [compat]
 Aqua = "0.8.4"
-BVProblemLibrary = "0.1.4"
+BVProblemLibrary = "0.1.5"
 DiffEqBase = "6.148.0"
 FiniteDiff = "2.23.0"
 LinearAlgebra = "1.10"
