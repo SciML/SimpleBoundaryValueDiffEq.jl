@@ -4,7 +4,6 @@ authors = ["Avik Pal <avikpal@mit.edu> and contributors"]
 version = "0.1.0"
 
 [deps]
-ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
@@ -14,7 +13,6 @@ SimpleNonlinearSolve = "727e6d20-b764-4bd8-a329-72de5adea6c7"
 [compat]
 Aqua = "0.8.4"
 BVProblemLibrary = "0.1.5"
-ConcreteStructs = "0.2.3"
 DiffEqBase = "6.148.0"
 FiniteDiff = "2.23.0"
 JET = "0.8.29"

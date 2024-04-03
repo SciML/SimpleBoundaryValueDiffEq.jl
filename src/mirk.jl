@@ -26,89 +26,38 @@ alg_stage(alg::SimpleMIRK5) = 4
 alg_order(alg::SimpleMIRK6) = 6
 alg_stage(alg::SimpleMIRK6) = 5
 
-@concrete mutable struct SimpleMIRKCache{iip, T}
-    prob
-    alg
-    mesh
-    N
-    M
-    p
-    pt
-
-    order
-    stage
-
-    c
-    v
-    b
-    x
-
-    y
-    y0
-    residual
-    discrete_stages
-    guess
-
-    dt
-    kwargs
-end
-
-Base.eltype(::SimpleMIRKCache{iip, T}) where {iip, T} = T
-
-function SciMLBase.__init(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kwargs...)
+function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kwargs...)
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     N = Int(cld(prob.tspan[2] - prob.tspan[1], dt))
     mesh = collect(range(prob.tspan[1], prob.tspan[2], length = N + 1))
-    iip = SciMLBase.isinplace(prob)
     pt = prob.problem_type
 
-    order = alg_order(alg)
     stage = alg_stage(alg)
-    T, M, u0, guess = __extract_details(prob, N)
-    y = [similar(u0) for i in 1:(N + 1)]
-    y0 = [similar(u0) for i in 1:(N + 1)]
-    residual = [similar(u0) for i in 1:(N + 1)]
-    discrete_stages = [similar(u0) for i in 1:stage]
+    M, u0, guess = __extract_details(prob, N)
+    resid = [similar(u0) for _ in 1:(N + 1)]
+    discrete_stages = [similar(u0) for _ in 1:stage]
 
     c, v, b, x = constructSimpleMIRK(alg)
-    return SimpleMIRKCache{iip, T}(prob, alg, mesh, N, M, prob.p, pt, order, stage, c, v, b,
-        x, y, y0, residual, discrete_stages, guess, dt, kwargs)
-end
 
-function SciMLBase.solve!(cache::SimpleMIRKCache{iip, T}) where {iip, T}
-    reorder! = function (resid)
-        # reorder the Jacobian matrix such that it is banded
-        tmp_last = resid[end]
-        for i in (length(resid) - 1):-1:1
-            resid[i + 1] = resid[i]
-        end
-        resid[1], resid[end] = resid[end], tmp_last
-    end
-    function loss(y, p)
-        resid = copy(y)
-        unflatten_vector!(cache.y, y)
-        resid!(cache)
-        eval_bc_residual!(cache, cache.pt)
-        flatten_vector!(resid, cache.residual)
-        reorder!(resid)
-        return resid
+    function loss(u, p)
+        u = unflatten_vector(u, M, N)
+        resid!(resid, u, mesh, discrete_stages, c, v, b, x, prob, dt)
+        eval_bc_residual!(resid, u, mesh, prob, pt)
+        res = flatten_vector(resid)
+        return res
     end
 
     jac(u, p) = FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
 
-    ig = zeros(T, cache.M * (cache.N + 1))
-    flatten_vector!(ig, cache.guess)
-
     nlfun = NonlinearFunction(loss, jac = jac)
-    nlprob = NonlinearProblem(nlfun, ig, cache.p)
-    nlsol = solve(nlprob, cache.alg.nlsolve)
-    sol = [similar(cache.prob.u0) for i in 1:(cache.N + 1)]
-    unflatten_vector!(sol, nlsol.u)
+    nlprob = NonlinearProblem(nlfun, flatten_vector(guess))
+    nlsol = solve(nlprob, alg.nlsolve)
+    u = unflatten_vector(nlsol.u, M, N)
 
-    return DiffEqBase.build_solution(cache.prob, cache.alg, cache.mesh, sol)
+    return DiffEqBase.build_solution(prob, alg, mesh, u)
 end
 
-function __extract_details(prob::BVProblem, N::Integer)
+@inline function __extract_details(prob::BVProblem, N::Integer)
     if isa(prob.u0[1], AbstractArray)
         u0 = prob.u0[1]
         guess = prob.u0
@@ -117,44 +66,40 @@ function __extract_details(prob::BVProblem, N::Integer)
         guess = [u0 for i in 1:(N + 1)]
     end
     M = length(u0)
-    T = eltype(u0)
 
-    return T, M, u0, guess
+    return M, u0, guess
 end
 
-function eval_bc_residual!(
-        cache::SimpleMIRKCache{iip, T}, pt::SciMLBase.StandardBVProblem) where {iip, T}
-    cache.prob.f.bc(cache.residual[end], cache.y, cache.p, cache.mesh)
+function eval_bc_residual!(residual, y, mesh, prob, pt::SciMLBase.StandardBVProblem)
+    prob.f.bc(residual[end], y, prob.p, mesh)
 end
 
-function eval_bc_residual!(
-        cache::SimpleMIRKCache{iip, T}, pt::SciMLBase.TwoPointBVProblem) where {iip, T}
-    length_a = length(cache.prob.f.bcresid_prototype[1])
-    length_b = length(cache.prob.f.bcresid_prototype[2])
-    @views cache.prob.f.bc[1](cache.residual[end][1:length_a], cache.y[1], cache.p)
-    @views cache.prob.f.bc[2](
-        cache.residual[end][(length_a + 1):(length_a + length_b)], cache.y[end], cache.p)
+function eval_bc_residual!(residual, y, _, prob, pt::SciMLBase.TwoPointBVProblem)
+    length_a = length(prob.f.bcresid_prototype[1])
+    length_b = length(prob.f.bcresid_prototype[2])
+    @views first(prob.f.bc)(residual[end][1:length_a], y[1], prob.p)
+    @views last(prob.f.bc)(
+        residual[end][(length_a + 1):(length_a + length_b)], y[end], prob.p)
 end
 
-function resid!(cache::SimpleMIRKCache{iip, T}) where {iip, T}
-    for i in 1:(cache.N)
-        for r in 1:(cache.stage)
-            x_temp = cache.mesh[i] + cache.c[r] * cache.dt
-            y_temp = (1 - cache.v[r]) * cache.y[i] + cache.v[r] * cache.y[i + 1]
+function resid!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
+    iip = SciMLBase.isinplace(prob)
+    for i in 1:(length(mesh) - 1)
+        for r in eachindex(discrete_stages)
+            x_temp = mesh[i] + c[r] * dt
+            y_temp = (1 - v[r]) * y[i] + v[r] * y[i + 1]
             if r > 1
-                y_temp += cache.dt *
-                          sum(j -> cache.x[r, j] * cache.discrete_stages[j], 1:(r - 1))
+                y_temp += dt * sum(j -> x[r, j] * discrete_stages[j], 1:(r - 1))
             end
             if iip
-                cache.prob.f(cache.discrete_stages[r], y_temp, cache.p, x_temp)
+                prob.f(discrete_stages[r], y_temp, prob.p, x_temp)
             else
-                tmp = cache.prob.f(y_temp, cache.p, x_temp)
-                copyto!(cache.discrete_stages[r], tmp)
+                tmp = prob.f(y_temp, prob.p, x_temp)
+                copyto!(discrete_stages[r], tmp)
             end
         end
-        cache.residual[i] = cache.y[i + 1] - cache.y[i] -
-                            cache.dt *
-                            sum(j -> cache.b[j] * cache.discrete_stages[j], 1:(cache.stage))
+        residual[i] = y[i + 1] - y[i] -
+                      dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
     end
 end
 
@@ -195,18 +140,19 @@ function constructSimpleMIRK(alg::SimpleMIRK6)
     return c, v, b, x
 end
 
-function flatten_vector!(
-        dest::T1, src::Vector{T2}) where {T1 <: AbstractArray, T2 <: AbstractArray}
+@inline function flatten_vector(src::Vector{T}) where {T <: AbstractArray}
     M = length(src[1])
+    new_src = zeros(M * length(src))
     for i in eachindex(src)
-        dest[(((i - 1) * M) + 1):(i * M)] = src[i]
+        new_src[(((i - 1) * M) + 1):(i * M)] = src[i]
     end
+    return new_src
 end
 
-function unflatten_vector!(
-        dest::Vector{T1}, src::T2) where {T1 <: AbstractArray, T2 <: AbstractArray}
-    M = length(dest[1])
-    for i in 1:length(dest)
+@inline function unflatten_vector(src::AbstractArray{T}, M::P, N::P) where {P <: Integer, T}
+    dest = [zeros(M) for i in 1:(N + 1)]
+    for i in 1:(N + 1)
         copyto!(dest[i], src[((M * (i - 1)) + 1):(M * i)])
     end
+    return dest
 end
