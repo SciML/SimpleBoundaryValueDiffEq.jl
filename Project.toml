@@ -3,16 +3,36 @@ uuid = "be0294bd-f90f-4760-ac4e-3421ce2b2da0"
 authors = ["Avik Pal <avikpal@mit.edu> and contributors"]
 version = "0.1.0"
 
+[deps]
+DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
+FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+SimpleNonlinearSolve = "727e6d20-b764-4bd8-a329-72de5adea6c7"
+
 [compat]
 Aqua = "0.8.4"
+BVProblemLibrary = "0.1.5"
+DiffEqBase = "6.148.0"
+DiffEqDevTools = "2.44.2"
+FiniteDiff = "2.23.0"
 JET = "0.8.29"
+LinearAlgebra = "1.10"
+Reexport = "1.2.2"
+SafeTestsets = "0.1"
+SciMLBase = "2.30.3"
+SimpleNonlinearSolve = "1.6.0"
 Test = "1.10"
 julia = "1.10"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+BVProblemLibrary = "ded0fc24-dfea-4565-b1d9-79c027d14d84"
+DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "JET", "Test"]
+test = ["Aqua", "BVProblemLibrary", "DiffEqDevTools", "JET", "SafeTestsets", "Test", "LinearAlgebra"]
