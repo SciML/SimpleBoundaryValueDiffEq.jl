@@ -30,29 +30,44 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     N = Int(cld(prob.tspan[2] - prob.tspan[1], dt))
     mesh = collect(range(prob.tspan[1], prob.tspan[2], length = N + 1))
+    iip = SciMLBase.isinplace(prob)
     pt = prob.problem_type
 
     stage = alg_stage(alg)
     M, u0, guess = __extract_details(prob, N)
     resid = [similar(u0) for _ in 1:(N + 1)]
+    y = [similar(u0) for _ in 1:(N + 1)]
     discrete_stages = [similar(u0) for _ in 1:stage]
 
     c, v, b, x = constructSimpleMIRK(alg)
 
-    function loss(u, p)
-        u = unflatten_vector(u, M, N)
-        resid!(resid, u, mesh, discrete_stages, c, v, b, x, prob, dt)
-        eval_bc_residual!(resid, u, mesh, prob, pt)
-        res = flatten_vector(resid)
-        return res
+    loss = if iip
+        function (res, u, p)
+            y_ = recursive_unflatten!(y, u)
+            Φ!(resid, y_, mesh, discrete_stages, c, v, b, x, prob, dt)
+            eval_bc_residual!(resid[end], u, mesh, prob, pt)
+            recursive_flatten!(res, resid)
+            return res
+        end
+    else
+        function (u, p)
+            y_ = recursive_unflatten!(y, u)
+            resid_co = Φ(y_, mesh, discrete_stages, c, v, b, x, prob, dt)
+            resid_bc = eval_bc_residual(u, mesh, prob, pt)
+            return vcat(mapreduce(vec, vcat, resid_co), resid_bc)
+        end
     end
 
-    jac(u, p) = FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
+    jac = if iip
+        (J, u, p) -> FiniteDiff.finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
+    else
+        (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
+    end
 
     nlfun = NonlinearFunction(loss, jac = jac)
-    nlprob = NonlinearProblem(nlfun, flatten_vector(guess))
+    nlprob = NonlinearProblem(nlfun, reduce(vcat, guess))
     nlsol = solve(nlprob, alg.nlsolve)
-    u = unflatten_vector(nlsol.u, M, N)
+    u = recursive_unflatten!(y, nlsol.u)
 
     return DiffEqBase.build_solution(prob, alg, mesh, u)
 end
@@ -70,19 +85,9 @@ end
     return M, u0, guess
 end
 
-function eval_bc_residual!(residual, y, mesh, prob, pt::SciMLBase.StandardBVProblem)
-    prob.f.bc(residual[end], y, prob.p, mesh)
-end
 
-function eval_bc_residual!(residual, y, _, prob, pt::SciMLBase.TwoPointBVProblem)
-    length_a = length(prob.f.bcresid_prototype[1])
-    length_b = length(prob.f.bcresid_prototype[2])
-    @views first(prob.f.bc)(residual[end][1:length_a], y[1], prob.p)
-    @views last(prob.f.bc)(
-        residual[end][(length_a + 1):(length_a + length_b)], y[end], prob.p)
-end
 
-function resid!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
+function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
     iip = SciMLBase.isinplace(prob)
     for i in 1:(length(mesh) - 1)
         for r in eachindex(discrete_stages)
@@ -91,16 +96,30 @@ function resid!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
             if r > 1
                 y_temp += dt * sum(j -> x[r, j] * discrete_stages[j], 1:(r - 1))
             end
-            if iip
-                prob.f(discrete_stages[r], y_temp, prob.p, x_temp)
-            else
-                tmp = prob.f(y_temp, prob.p, x_temp)
-                copyto!(discrete_stages[r], tmp)
-            end
+            prob.f(discrete_stages[r], y_temp, prob.p, x_temp)
         end
         residual[i] = y[i + 1] - y[i] -
                       dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
     end
+end
+
+function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
+    iip = SciMLBase.isinplace(prob)
+    residual = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
+    for i in 1:(length(mesh) - 1)
+        for r in eachindex(discrete_stages)
+            x_temp = mesh[i] + c[r] * dt
+            y_temp = (1 - v[r]) * y[i] + v[r] * y[i + 1]
+            if r > 1
+                y_temp += dt * sum(j -> x[r, j] * discrete_stages[j], 1:(r - 1))
+            end
+            tmp = prob.f(y_temp, prob.p, x_temp)
+            copyto!(discrete_stages[r], tmp)
+        end
+        residual[i] = y[i + 1] - y[i] -
+                      dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
+    end
+    return residual
 end
 
 function constructSimpleMIRK(alg::SimpleMIRK4)
@@ -138,21 +157,4 @@ function constructSimpleMIRK(alg::SimpleMIRK6)
          -5//24 5//24 2//3 -2//3 0]
 
     return c, v, b, x
-end
-
-@inline function flatten_vector(src::Vector{T}) where {T <: AbstractArray}
-    M = length(src[1])
-    new_src = zeros(M * length(src))
-    for i in eachindex(src)
-        new_src[(((i - 1) * M) + 1):(i * M)] = src[i]
-    end
-    return new_src
-end
-
-@inline function unflatten_vector(src::AbstractArray{T}, M::P, N::P) where {P <: Integer, T}
-    dest = [zeros(M) for i in 1:(N + 1)]
-    for i in 1:(N + 1)
-        copyto!(dest[i], src[((M * (i - 1)) + 1):(M * i)])
-    end
-    return dest
 end
