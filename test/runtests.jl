@@ -15,4 +15,8 @@ using SafeTestsets
     @testset "Test MIRK methods convergence" begin
         include("mirk_tests.jl")
     end
+
+    @testset "Test Shooting methods convergence" begin
+        include("shooting_tests.jl")
+    end
 end
