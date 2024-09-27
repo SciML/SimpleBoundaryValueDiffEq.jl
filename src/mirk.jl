@@ -45,7 +45,7 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
         function (res, u, p)
             y_ = recursive_unflatten!(y, u)
             Φ!(resid, y_, mesh, discrete_stages, c, v, b, x, prob, dt)
-            eval_bc_residual!(resid[end], u, mesh, prob, pt)
+            eval_bc_residual!(resid[end], y_, mesh, prob, pt)
             recursive_flatten!(res, resid)
             return res
         end
@@ -53,13 +53,14 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
         function (u, p)
             y_ = recursive_unflatten!(y, u)
             resid_co = Φ(y_, mesh, discrete_stages, c, v, b, x, prob, dt)
-            resid_bc = eval_bc_residual(u, mesh, prob, pt)
+            resid_bc = eval_bc_residual(y_, mesh, prob, pt)
             return vcat(mapreduce(vec, vcat, resid_co), resid_bc)
         end
     end
 
     jac = if iip
-        (J, u, p) -> FiniteDiff.finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
+        (J, u, p) -> FiniteDiff.finite_difference_jacobian!(
+            J, (res, y) -> loss(res, y, p), u)
     else
         (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
     end
@@ -85,10 +86,7 @@ end
     return M, u0, guess
 end
 
-
-
 function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
-    iip = SciMLBase.isinplace(prob)
     for i in 1:(length(mesh) - 1)
         for r in eachindex(discrete_stages)
             x_temp = mesh[i] + c[r] * dt
@@ -104,7 +102,6 @@ function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
 end
 
 function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
-    iip = SciMLBase.isinplace(prob)
     residual = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
     for i in 1:(length(mesh) - 1)
         for r in eachindex(discrete_stages)
