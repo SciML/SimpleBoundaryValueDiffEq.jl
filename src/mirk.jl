@@ -119,6 +119,37 @@ function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
     return residual
 end
 
+@kernel function reskernel!(residual, y, mesh, len_mesh, stages_flat, n_stage, c, v, b, x, dt, size_u)
+    i = @index(Global)
+    if i <= (len_mesh - 1)
+        column_stage = i % size_u == 0 ? size_u : i % size_u
+
+        for r in 1:n_stage
+
+            @inbounds x_temp = mesh[i] + c[r] * dt
+            @inbounds y_temp = (1 - v[r]) * y[i] + v[r] * y[i + size_u]
+
+            if r > 1
+                for j = 1:(r-1)
+                    y_temp += x[r,j] * stages_flat[(column_stage)+(j-1)*size_u]
+                end
+                y_temp *= dt
+            end
+
+            # TO DEAL WITH
+            # prob.f(stages_flat[r], y_temp, prob.p, x_temp)
+        end
+
+        sum_bstages = 0
+        for j = 1:n_stage
+            sum_bstages += b[j] * stages_flat[(column_stage)+(j-1)*size_u]
+        end
+
+        residual[i] = y[i + size_u] - y[i] - dt * sum_bstages
+    end
+end
+
+
 function constructSimpleMIRK(alg::SimpleMIRK4)
     c = [0, 1, 1 // 2, 3 // 4]
     v = [0, 1, 1 // 2, 27 // 32]
