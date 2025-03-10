@@ -6,6 +6,7 @@ import DiffEqBase: solve
 using FiniteDiff
 using OrdinaryDiffEqTsit5
 using SimpleNonlinearSolve
+using KernelAbstractions, CUDA
 
 abstract type SimpleBoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractSimpleMIRK <: SimpleBoundaryValueDiffEqAlgorithm end

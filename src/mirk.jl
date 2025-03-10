@@ -102,24 +102,26 @@ function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
 end
 
 function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
+    @info "is this running"
+    size_u = size(y[1])[1]
     residual = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
-    for i in 1:(length(mesh) - 1)
-        for r in eachindex(discrete_stages)
-            x_temp = mesh[i] + c[r] * dt
-            y_temp = (1 - v[r]) * y[i] + v[r] * y[i + 1]
-            if r > 1
-                y_temp += dt * sum(j -> x[r, j] * discrete_stages[j], 1:(r - 1))
-            end
-            tmp = prob.f(y_temp, prob.p, x_temp)
-            copyto!(discrete_stages[r], tmp)
-        end
-        residual[i] = y[i + 1] - y[i] -
-                      dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
-    end
+
+    # right now these are forced till we make a solver similar to
+    # EnsembleGPUKernel which takes the backend as a parameter
+    gpu_residual = CuArray(zeros(Float32, size_u * N+1))
+    k = reskernel!(CUDA.CUDABackend)
+    
+    y_flat = recursive_flatten(y)
+    stages_flat = recursive_flatten(discrete_stages)
+
+    k(gpu_residual, y_flat, mesh, length(mesh), stages_flat,
+        length(discrete_stages), c, v, b, x, prob, dt, size_u)
+
+    recursive_unflatten!(residual, gpu_residual)
     return residual
 end
 
-@kernel function reskernel!(residual, y, mesh, len_mesh, stages_flat, n_stage, c, v, b, x, dt, size_u)
+@kernel function reskernel!(residual, y, mesh, len_mesh, stages_flat, n_stage, c, v, b, x, prob, dt, size_u)
     i = @index(Global)
     if i <= (len_mesh - 1)
         column_stage = i % size_u == 0 ? size_u : i % size_u
@@ -131,13 +133,19 @@ end
 
             if r > 1
                 for j = 1:(r-1)
-                    y_temp += x[r,j] * stages_flat[(column_stage)+(j-1)*size_u]
+                    y_temp +=  dt * x[r,j] * stages_flat[(column_stage)+(j-1)*size_u]
                 end
-                y_temp *= dt
             end
 
-            # TO DEAL WITH
-            # prob.f(stages_flat[r], y_temp, prob.p, x_temp)
+            # Reconstruct the column of the discrete stage in order to
+            # pass it to prob.f
+            discrete_stage = []
+            for col_n in column_stage:(column_stage + size_u - 1)
+                push!(discrete_stage, stages_flat[col_n])
+            end
+
+            # how to reconstruct y_temp similar to the way it is done in Φ()?
+            # prob.f(discrete_stage, y_temp, prob.p, x_temp)
         end
 
         sum_bstages = 0
