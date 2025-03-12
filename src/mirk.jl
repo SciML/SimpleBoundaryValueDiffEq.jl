@@ -114,8 +114,10 @@ function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
     y_flat = recursive_flatten(y)
     stages_flat = recursive_flatten(discrete_stages)
 
-    k(gpu_residual, y_flat, mesh, length(mesh), stages_flat,
-        length(discrete_stages), c, v, b, x, prob, dt, size_u)
+    len_mesh = length(mesh)
+    k(gpu_residual, y_flat, mesh, len_mesh, stages_flat,
+                                                         # idk about this ndrange tbh
+        length(discrete_stages), c, v, b, x, prob, dt, size_u, ndrange=len_mesh/size_u)
 
     recursive_unflatten!(residual, gpu_residual)
     return residual
@@ -124,36 +126,46 @@ end
 @kernel function reskernel!(residual, y, mesh, len_mesh, stages_flat, n_stage, c, v, b, x, prob, dt, size_u)
     i = @index(Global)
     if i <= (len_mesh - 1)
-        column_stage = i % size_u == 0 ? size_u : i % size_u
-
         for r in 1:n_stage
 
             @inbounds x_temp = mesh[i] + c[r] * dt
-            @inbounds y_temp = (1 - v[r]) * y[i] + v[r] * y[i + size_u]
+            y_temp = []
 
-            if r > 1
-                for j = 1:(r-1)
-                    y_temp +=  dt * x[r,j] * stages_flat[(column_stage)+(j-1)*size_u]
+            # construct y_temp for this mesh iteration
+            for z = 0:(size_u - 1)
+                @inbounds push!(y_temp, (1 - v[r]) * y[i + z] + v[r] * y[i + size_u + z])
+
+                # add summation of x_rj * K_j to y_temp 
+                if r > 1
+                    summation_xk = 0
+                    for j = 1:(r-1)
+                        @inbounds summation_xk += x[r,j] * stages_flat[(j - 1)*size_u + z + 1]
+                    end
+                    @inbounds y_temp[z + 1] += dt * summation_xk
                 end
             end
+
 
             # Reconstruct the column of the discrete stage in order to
             # pass it to prob.f
             discrete_stage = []
-            for col_n in column_stage:(column_stage + size_u - 1)
-                push!(discrete_stage, stages_flat[col_n])
+            for z = 1:size_u
+                push!(discrete_stage, stages_flat[(r-1)*size_u + z])
+            end
+            prob.f(discrete_stage, y_temp, prob.p, x_temp)
+        end
+
+
+        # finally, Φᵢ = yᵢ₊₁ - yᵢ - hᵢ∑bᵣKᵣ
+        for j = 1:size_u
+            sum_bstages = 0
+            for r = 1:n_stage
+                sum_bstages += b[r] * stages_flat[j+(r-1)*size_u]
             end
 
-            # how to reconstruct y_temp similar to the way it is done in Φ()?
-            # prob.f(discrete_stage, y_temp, prob.p, x_temp)
+            residual[(i-1)*size_u + j] = y[(i-1)*size_u + j + size_u] - y[(i-1)*size_u + j]
+                                        - dt * sum_bstages
         end
-
-        sum_bstages = 0
-        for j = 1:n_stage
-            sum_bstages += b[j] * stages_flat[(column_stage)+(j-1)*size_u]
-        end
-
-        residual[i] = y[i + size_u] - y[i] - dt * sum_bstages
     end
 end
 
