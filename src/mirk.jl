@@ -102,22 +102,28 @@ function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
 end
 
 function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
-    @info "is this running"
     size_u = size(y[1])[1]
     residual = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
 
-    # right now these are forced till we make a solver similar to
-    # EnsembleGPUKernel which takes the backend as a parameter
-    gpu_residual = CuArray(zeros(Float32, size_u * N+1))
-    k = reskernel!(CUDA.CUDABackend)
-    
-    y_flat = recursive_flatten(y)
-    stages_flat = recursive_flatten(discrete_stages)
+    y_flat = recursive_flatten!(zeros(sum(length, y)), y)
+    stages_flat = recursive_flatten!(zeros(sum(length, discrete_stages)), discrete_stages)
 
+    # right now this backend is forced till we make a solver similar to
+    # EnsembleGPUKernel which takes the backend as a parameter
     len_mesh = length(mesh)
-    k(gpu_residual, y_flat, mesh, len_mesh, stages_flat,
-                                                         # idk about this ndrange tbh
-        length(discrete_stages), c, v, b, x, prob, dt, size_u, ndrange=len_mesh/size_u)
+    gpu_mesh = CuArray(mesh)
+    gpu_residual = CuArray(zeros(Float32, size_u * len_mesh))
+    k = reskernel!(CUDA.CUDABackend())
+    
+    gpu_c, gpu_v, gpu_b, gpu_x = (CuArray(Float32.(n)) for n in [c,v,b,x])
+    y_flat = CuArray(y_flat)
+    stages_flat = CuArray(stages_flat)
+
+    prob = DiffEqGPU.make_prob_compatible(prob)
+    prob = cu(prob)
+
+    k(gpu_residual, y_flat, gpu_mesh, len_mesh, stages_flat,
+        length(discrete_stages), gpu_c, gpu_v, gpu_b, gpu_x, prob, dt, size_u, ndrange=len_mesh)
 
     recursive_unflatten!(residual, gpu_residual)
     return residual
@@ -127,7 +133,6 @@ end
     i = @index(Global)
     if i <= (len_mesh - 1)
         for r in 1:n_stage
-
             @inbounds x_temp = mesh[i] + c[r] * dt
             y_temp = []
 
@@ -145,25 +150,21 @@ end
                 end
             end
 
-
-            # Reconstruct the column of the discrete stage in order to
-            # pass it to prob.f
-            discrete_stage = []
+            # get prob.f and replace the stage with its result
+            temp_stage = prob.f(y_temp, prob.p, x_temp)
             for z = 1:size_u
-                push!(discrete_stage, stages_flat[(r-1)*size_u + z])
+                @inbounds stages_flat[(r-1)*size_u + z] = temp_stage[z]
             end
-            prob.f(discrete_stage, y_temp, prob.p, x_temp)
-        end
 
+        end
 
         # finally, Φᵢ = yᵢ₊₁ - yᵢ - hᵢ∑bᵣKᵣ
         for j = 1:size_u
             sum_bstages = 0
             for r = 1:n_stage
-                sum_bstages += b[r] * stages_flat[j+(r-1)*size_u]
+                @inbounds sum_bstages += b[r] * stages_flat[j+(r-1)*size_u]
             end
-
-            residual[(i-1)*size_u + j] = y[(i-1)*size_u + j + size_u] - y[(i-1)*size_u + j]
+            @inbounds residual[(i-1)*size_u + j] = y[(i-1)*size_u + j + size_u] - y[(i-1)*size_u + j]
                                         - dt * sum_bstages
         end
     end
