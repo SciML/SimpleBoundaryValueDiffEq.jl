@@ -102,22 +102,74 @@ function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
 end
 
 function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
+    size_u = size(y[1])[1]
     residual = [similar(yᵢ) for yᵢ in y[1:(end - 1)]]
-    for i in 1:(length(mesh) - 1)
-        for r in eachindex(discrete_stages)
-            x_temp = mesh[i] + c[r] * dt
-            y_temp = (1 - v[r]) * y[i] + v[r] * y[i + 1]
-            if r > 1
-                y_temp += dt * sum(j -> x[r, j] * discrete_stages[j], 1:(r - 1))
-            end
-            tmp = prob.f(y_temp, prob.p, x_temp)
-            copyto!(discrete_stages[r], tmp)
-        end
-        residual[i] = y[i + 1] - y[i] -
-                      dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
-    end
+
+    y_flat = recursive_flatten!(zeros(sum(length, y)), y)
+    stages_flat = recursive_flatten!(zeros(sum(length, discrete_stages)), discrete_stages)
+
+    # right now this backend is forced till we make a solver similar to
+    # EnsembleGPUKernel which takes the backend as a parameter
+    len_mesh = length(mesh)
+    gpu_mesh = CuArray(mesh)
+    gpu_residual = CuArray(zeros(Float32, size_u * len_mesh))
+    k = reskernel!(CUDA.CUDABackend())
+    
+    gpu_c, gpu_v, gpu_b, gpu_x = (CuArray(Float32.(n)) for n in [c,v,b,x])
+    y_flat = CuArray(y_flat)
+    stages_flat = CuArray(stages_flat)
+
+    prob = DiffEqGPU.make_prob_compatible(prob)
+    prob = cu(prob)
+
+    k(gpu_residual, y_flat, gpu_mesh, len_mesh, stages_flat,
+        length(discrete_stages), gpu_c, gpu_v, gpu_b, gpu_x, prob, dt, size_u, ndrange=len_mesh)
+
+    recursive_unflatten!(residual, gpu_residual)
     return residual
 end
+
+@kernel function reskernel!(residual, y, mesh, len_mesh, stages_flat, n_stage, c, v, b, x, prob, dt, size_u)
+    i = @index(Global)
+    if i <= (len_mesh - 1)
+        for r in 1:n_stage
+            @inbounds x_temp = mesh[i] + c[r] * dt
+            y_temp = []
+
+            # construct y_temp for this mesh iteration
+            for z = 0:(size_u - 1)
+                @inbounds push!(y_temp, (1 - v[r]) * y[i + z] + v[r] * y[i + size_u + z])
+
+                # add summation of x_rj * K_j to y_temp 
+                if r > 1
+                    summation_xk = 0
+                    for j = 1:(r-1)
+                        @inbounds summation_xk += x[r,j] * stages_flat[(j - 1)*size_u + z + 1]
+                    end
+                    @inbounds y_temp[z + 1] += dt * summation_xk
+                end
+            end
+
+            # get prob.f and replace the stage with its result
+            temp_stage = prob.f(y_temp, prob.p, x_temp)
+            for z = 1:size_u
+                @inbounds stages_flat[(r-1)*size_u + z] = temp_stage[z]
+            end
+
+        end
+
+        # finally, Φᵢ = yᵢ₊₁ - yᵢ - hᵢ∑bᵣKᵣ
+        for j = 1:size_u
+            sum_bstages = 0
+            for r = 1:n_stage
+                @inbounds sum_bstages += b[r] * stages_flat[j+(r-1)*size_u]
+            end
+            @inbounds residual[(i-1)*size_u + j] = y[(i-1)*size_u + j + size_u] - y[(i-1)*size_u + j]
+                                        - dt * sum_bstages
+        end
+    end
+end
+
 
 function constructSimpleMIRK(alg::SimpleMIRK4)
     c = [0, 1, 1 // 2, 3 // 4]
