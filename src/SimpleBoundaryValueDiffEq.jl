@@ -2,7 +2,8 @@ module SimpleBoundaryValueDiffEq
 
 using Reexport
 import DiffEqBase: solve
-@reexport using DiffEqBase
+using DiffEqBase
+@reexport using SciMLBase
 using FiniteDiff
 using OrdinaryDiffEqTsit5
 using SimpleNonlinearSolve
