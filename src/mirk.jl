@@ -59,8 +59,8 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     end
 
     jac = if iip
-        (J, u, p) -> FiniteDiff.finite_difference_jacobian!(
-            J, (res, y) -> loss(res, y, p), u)
+        (J, u,
+            p) -> FiniteDiff.finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
     else
         (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
     end
