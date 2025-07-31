@@ -14,8 +14,7 @@ end
     end
     return y
 end
-@views function recursive_flatten_twopoint!(
-        y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
+@views function recursive_flatten_twopoint!(y::AbstractVector, x::Vector{<:AbstractArray}, sizes)
     x_, xiter = Iterators.peel(x)
     copyto!(y[1:prod(sizes[1])], x_[1:prod(sizes[1])])
     i = prod(sizes[1])

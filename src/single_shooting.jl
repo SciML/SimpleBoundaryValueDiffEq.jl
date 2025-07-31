@@ -34,8 +34,9 @@ function DiffEqBase.solve(prob::BVProblem, alg::SimpleShooting; abstol = 1e-6,
     end
 
     jac = if iip
-        (J, u, p) -> FiniteDiff.finite_difference_jacobian!(
-            J, (resid, y) -> loss(resid, y, p), u)
+        (J,
+            u,
+            p) -> FiniteDiff.finite_difference_jacobian!(J, (resid, y) -> loss(resid, y, p), u)
     else
         (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
     end
