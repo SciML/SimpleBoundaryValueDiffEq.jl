@@ -7,6 +7,7 @@ using DiffEqBase
 using FiniteDiff
 using OrdinaryDiffEqTsit5
 using SimpleNonlinearSolve
+using KernelAbstractions, CUDA, DiffEqGPU
 
 abstract type SimpleBoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractSimpleMIRK <: SimpleBoundaryValueDiffEqAlgorithm end
