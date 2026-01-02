@@ -74,8 +74,9 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
 end
 
 @inline function __extract_details(prob::BVProblem, N::Integer)
-    if isa(prob.u0[1], AbstractArray)
-        u0 = prob.u0[1]
+    # Use eltype check to avoid scalar indexing (for GPU array compatibility)
+    if eltype(prob.u0) <: AbstractArray
+        u0 = first(prob.u0)
         guess = prob.u0
     else
         u0 = prob.u0
