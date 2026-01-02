@@ -10,7 +10,7 @@ using SafeTestsets
         include("aqua_tests.jl")
     end
     @testset "Code linting (JET.jl)" begin
-        JET.test_package(SimpleBoundaryValueDiffEq; target_defined_modules = true)
+        JET.test_package(SimpleBoundaryValueDiffEq; target_modules = (SimpleBoundaryValueDiffEq,))
     end
     @testset "Test MIRK methods convergence" begin
         include("mirk_tests.jl")
