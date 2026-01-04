@@ -59,8 +59,10 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     end
 
     jac = if iip
-        (J, u,
-            p) -> FiniteDiff.finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
+        (
+            J, u,
+            p,
+        ) -> FiniteDiff.finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
     else
         (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
     end
@@ -98,8 +100,9 @@ function Φ!(residual, y, mesh, discrete_stages, c, v, b, x, prob, dt)
             prob.f(discrete_stages[r], y_temp, prob.p, x_temp)
         end
         residual[i] = y[i + 1] - y[i] -
-                      dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
+            dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
     end
+    return
 end
 
 function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
@@ -115,7 +118,7 @@ function Φ(y, mesh, discrete_stages, c, v, b, x, prob, dt)
             copyto!(discrete_stages[r], tmp)
         end
         residual[i] = y[i + 1] - y[i] -
-                      dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
+            dt * sum(j -> b[j] * discrete_stages[j], 1:length(discrete_stages))
     end
     return residual
 end
@@ -124,10 +127,12 @@ function constructSimpleMIRK(alg::SimpleMIRK4)
     c = [0, 1, 1 // 2, 3 // 4]
     v = [0, 1, 1 // 2, 27 // 32]
     b = [1 // 6, 1 // 6, 2 // 3, 0]
-    x = [0 0 0 0
-         0 0 0 0
-         1//8 -1//8 0 0
-         3//64 -9//64 0 0]
+    x = [
+        0 0 0 0
+        0 0 0 0
+        1 // 8 -1 // 8 0 0
+        3 // 64 -9 // 64 0 0
+    ]
 
     return c, v, b, x
 end
@@ -136,10 +141,12 @@ function constructSimpleMIRK(alg::SimpleMIRK5)
     c = [0, 1, 3 // 4, 3 // 10]
     v = [0, 1, 27 // 32, 837 // 1250]
     b = [5 // 54, 1 // 14, 32 // 81, 250 // 567]
-    x = [0 0 0 0
-         0 0 0 0
-         3//64 -9//64 0 0
-         21//1000 63//5000 -252//625 0]
+    x = [
+        0 0 0 0
+        0 0 0 0
+        3 // 64 -9 // 64 0 0
+        21 // 1000 63 // 5000 -252 // 625 0
+    ]
 
     return c, v, b, x
 end
@@ -148,11 +155,13 @@ function constructSimpleMIRK(alg::SimpleMIRK6)
     c = [0, 1, 1 // 4, 3 // 4, 1 // 2]
     v = [0, 1, 5 // 32, 27 // 32, 1 // 2]
     b = [7 // 90, 7 // 90, 16 // 45, 16 // 45, 2 // 15, 0, 0, 0, 0]
-    x = [0 0 0 0 0
-         0 0 0 0 0
-         9//64 -3//64 0 0 0
-         3//64 -9//64 0 0 0
-         -5//24 5//24 2//3 -2//3 0]
+    x = [
+        0 0 0 0 0
+        0 0 0 0 0
+        9 // 64 -3 // 64 0 0 0
+        3 // 64 -9 // 64 0 0 0
+        -5 // 24 5 // 24 2 // 3 -2 // 3 0
+    ]
 
     return c, v, b, x
 end
