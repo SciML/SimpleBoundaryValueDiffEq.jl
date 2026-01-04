@@ -32,8 +32,10 @@ bvp2 = BVProblem(f1, bc1, u0, tspan)
 bc2a!(resid, ua, p) = (resid[1] = ua[1])
 bc2b!(resid, ub, p) = (resid[1] = ub[1] - 1)
 
-bvp3 = TwoPointBVProblem(f1!, (bc2a!, bc2b!), u0, tspan;
-    bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1)))
+bvp3 = TwoPointBVProblem(
+    f1!, (bc2a!, bc2b!), u0, tspan;
+    bcresid_prototype = (Array{Float64}(undef, 1), Array{Float64}(undef, 1))
+)
 
 # Out of Place
 bc2a(ua, p) = [ua[1]]
@@ -42,7 +44,7 @@ bc2b(ub, p) = [ub[1] - 1]
 bvp4 = TwoPointBVProblem(f1, (bc2a, bc2b), u0, tspan)
 
 for prob in (bvp1, bvp2, bvp3, bvp4)
-    sol = solve(prob, SimpleShooting(), abstol = 1e-8, reltol = 1e-8)
+    sol = solve(prob, SimpleShooting(), abstol = 1.0e-8, reltol = 1.0e-8)
     @test SciMLBase.successful_retcode(sol)
-    @test norm(sol.resid, Inf) < 1e-8
+    @test norm(sol.resid, Inf) < 1.0e-8
 end
