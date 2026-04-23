@@ -15,7 +15,7 @@ SimpleNonlinearSolve = "727e6d20-b764-4bd8-a329-72de5adea6c7"
 [compat]
 Aqua = "0.8"
 BVProblemLibrary = "0.1.5"
-DiffEqBase = "6.148.0"
+DiffEqBase = "6.148.0, 7.0"
 DiffEqDevTools = "2.44.2"
 FiniteDiff = "2.24.0"
 LinearAlgebra = "1.10"
