@@ -18,7 +18,9 @@ function DiffEqBase.solve(
     iip = isinplace(prob)
 
     internal_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, prob.p)
-    ode_cache = SciMLBase.__init(internal_prob, alg.ode_alg)
+    ode_cache = SciMLBase.__init(
+        internal_prob, alg.ode_alg; abstol = abstol, reltol = reltol, odesolve_kwargs...
+    )
 
     loss = if iip
         function (resid, u, p)
