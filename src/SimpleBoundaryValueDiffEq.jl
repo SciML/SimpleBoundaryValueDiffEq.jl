@@ -15,5 +15,6 @@ abstract type AbstractSimpleShooting <: SimpleBoundaryValueDiffEqAlgorithm end
 include("utils.jl")
 include("mirk.jl")
 include("single_shooting.jl")
+include("precompilation.jl")
 
 end

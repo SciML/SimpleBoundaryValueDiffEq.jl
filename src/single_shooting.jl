@@ -3,20 +3,24 @@ struct SimpleShooting{N, O} <: AbstractSimpleShooting
     ode_alg::O
 end
 function SimpleShooting(; nlsolve = SimpleNewtonRaphson(), ode_alg = Tsit5())
-    SimpleShooting(nlsolve, ode_alg)
+    return SimpleShooting(nlsolve, ode_alg)
 end
 
 export SimpleShooting
 
-function DiffEqBase.solve(prob::BVProblem, alg::SimpleShooting; abstol = 1e-6,
-        reltol = 1e-6, odesolve_kwargs = (;), nlsolve_kwargs = (;))
+function DiffEqBase.solve(
+        prob::BVProblem, alg::SimpleShooting; abstol = 1.0e-6,
+        reltol = 1.0e-6, odesolve_kwargs = (;), nlsolve_kwargs = (;)
+    )
     u0 = prob.u0
     pt = prob.problem_type
 
     iip = isinplace(prob)
 
     internal_prob = ODEProblem{iip}(prob.f, u0, prob.tspan, prob.p)
-    ode_cache = SciMLBase.__init(internal_prob, alg.ode_alg)
+    ode_cache = SciMLBase.__init(
+        internal_prob, alg.ode_alg; abstol = abstol, reltol = reltol, odesolve_kwargs...
+    )
 
     loss = if iip
         function (resid, u, p)
@@ -34,9 +38,11 @@ function DiffEqBase.solve(prob::BVProblem, alg::SimpleShooting; abstol = 1e-6,
     end
 
     jac = if iip
-        (J,
+        (
+            J,
             u,
-            p) -> FiniteDiff.finite_difference_jacobian!(J, (resid, y) -> loss(resid, y, p), u)
+            p,
+        ) -> FiniteDiff.finite_difference_jacobian!(J, (resid, y) -> loss(resid, y, p), u)
     else
         (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
     end
@@ -46,9 +52,12 @@ function DiffEqBase.solve(prob::BVProblem, alg::SimpleShooting; abstol = 1e-6,
     nlsol = solve(nlprob, alg.nlsolve, abstol = abstol, reltol = reltol, nlsolve_kwargs...)
 
     internal_prob_final = ODEProblem{iip}(prob.f, nlsol.u, prob.tspan, prob.p)
-    odesol = SciMLBase.__solve(internal_prob_final, alg.ode_alg, abstol = abstol,
-        reltol = reltol, odesolve_kwargs...)
+    odesol = SciMLBase.__solve(
+        internal_prob_final, alg.ode_alg, abstol = abstol,
+        reltol = reltol, odesolve_kwargs...
+    )
 
     return DiffEqBase.build_solution(
-        prob, alg, odesol.t, odesol.u, retcode = odesol.retcode, resid = nlsol.resid)
+        prob, alg, odesol.t, odesol.u, retcode = odesol.retcode, resid = nlsol.resid
+    )
 end
