@@ -1,6 +1,6 @@
-@testset "Aqua" begin
-    using SimpleBoundaryValueDiffEq, Aqua
+using SimpleBoundaryValueDiffEq, Aqua, Test
 
+@testset "Aqua" begin
     if isdefined(Base, :precompile_all)
         Aqua.find_persistent_tasks_deps(SimpleBoundaryValueDiffEq)
     end
