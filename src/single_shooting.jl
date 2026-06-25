@@ -57,7 +57,7 @@ function DiffEqBase.solve(
         reltol = reltol, odesolve_kwargs...
     )
 
-    return DiffEqBase.build_solution(
+    return SciMLBase.build_solution(
         prob, alg, odesol.t, odesol.u, retcode = odesol.retcode, resid = nlsol.resid
     )
 end
