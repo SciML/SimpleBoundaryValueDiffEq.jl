@@ -6,13 +6,11 @@ run_qa(
     ei_kwargs = (;
         all_qualified_accesses_are_public = (;
             ignore = (
-                # SciMLBase internals (non-public; SimpleBoundaryValueDiffEq subtypes
-                # / dispatches on / calls them as part of the SciML BVP interface).
-                :AbstractBVPAlgorithm, :StandardBVProblem, :__init, :__solve, :build_solution,
+                # SciMLBase internals (still non-public; SimpleBoundaryValueDiffEq
+                # subtypes / dispatches on / calls them as part of the SciML BVP interface).
+                :AbstractBVPAlgorithm, :StandardBVProblem, :__init, :__solve,
                 # FiniteDiff internals (non-public Jacobian kernels).
                 :finite_difference_jacobian, Symbol("finite_difference_jacobian!"),
-                # Base.Iterators internal.
-                :peel,
             ),
         ),
     ),
