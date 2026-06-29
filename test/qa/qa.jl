@@ -6,17 +6,13 @@ run_qa(
     ei_kwargs = (;
         all_qualified_accesses_are_public = (;
             ignore = (
-                # SciMLBase internals (still non-public in SciMLBase 3.27.0;
-                # SimpleBoundaryValueDiffEq subtypes / dispatches on / calls them
-                # as part of the SciML BVP interface).
-                :AbstractBVPAlgorithm, :StandardBVProblem, :__init, :__solve,
-                # FiniteDiff internals (non-public Jacobian kernels).
+                # SciMLBase BVP-interface internals (still non-public in SciMLBase 3.30.0):
+                # the BVP-algorithm supertype this package subtypes, and the standard
+                # BVP problem-type marker it dispatches on. No public owner to migrate to.
+                :AbstractBVPAlgorithm, :StandardBVProblem,
+                # FiniteDiff Jacobian kernels (FiniteDiff declares none of its API public).
                 :finite_difference_jacobian, Symbol("finite_difference_jacobian!"),
             ),
         ),
     ),
-    # Heavy `using DiffEqBase/SciMLBase/SimpleNonlinearSolve/...` style: many implicit
-    # imports; making them all explicit is a risky mass refactor tracked in
-    # https://github.com/SciML/SimpleBoundaryValueDiffEq.jl/issues/55.
-    ei_broken = (:no_implicit_imports,),
 )
