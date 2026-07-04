@@ -1,5 +1,3 @@
-using PrecompileTools
-
 @setup_workload begin
     # Simple harmonic oscillator BVP for precompilation
     # Inplace ODE function

@@ -1,12 +1,14 @@
 module SimpleBoundaryValueDiffEq
 
-using Reexport
-import DiffEqBase: solve
-using DiffEqBase
+using Reexport: Reexport, @reexport
 @reexport using SciMLBase
-using FiniteDiff
-using OrdinaryDiffEqTsit5
-using SimpleNonlinearSolve
+using SciMLBase: SciMLBase, BVProblem, NonlinearFunction, NonlinearProblem, ODEProblem,
+    isinplace, solve!
+using DiffEqBase: DiffEqBase, solve
+using FiniteDiff: FiniteDiff
+using OrdinaryDiffEqTsit5: OrdinaryDiffEqTsit5, Tsit5
+using SimpleNonlinearSolve: SimpleNonlinearSolve, SimpleNewtonRaphson
+using PrecompileTools: PrecompileTools, @compile_workload, @setup_workload
 
 abstract type SimpleBoundaryValueDiffEqAlgorithm <: SciMLBase.AbstractBVPAlgorithm end
 abstract type AbstractSimpleMIRK <: SimpleBoundaryValueDiffEqAlgorithm end

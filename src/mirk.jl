@@ -72,7 +72,7 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     nlsol = solve(nlprob, alg.nlsolve)
     u = recursive_unflatten!(y, nlsol.u)
 
-    return DiffEqBase.build_solution(prob, alg, mesh, u; retcode = nlsol.retcode)
+    return SciMLBase.build_solution(prob, alg, mesh, u; retcode = nlsol.retcode)
 end
 
 @inline function __extract_details(prob::BVProblem, N::Integer)

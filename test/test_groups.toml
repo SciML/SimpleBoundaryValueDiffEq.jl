@@ -1,0 +1,14 @@
+# Root SimpleBoundaryValueDiffEq.jl test-group matrix, consumed by the reusable
+# grouped-tests.yml@v1 caller (.github/workflows/Tests.yml). Each group runs on
+# every Julia version it lists; runtests.jl dispatches on GROUP via run_tests().
+#
+# Core: the MIRK + Shooting convergence tests in the light main test environment.
+# QA: Aqua + ExplicitImports + JET, isolated in test/qa/Project.toml. JET is not
+#   compatible with the prerelease channel, so QA runs on release + LTS only.
+
+[Core]
+versions = ["lts", "1", "pre"]
+os = ["ubuntu-latest", "macOS-latest", "windows-latest"]
+
+[QA]
+versions = ["lts", "1"]

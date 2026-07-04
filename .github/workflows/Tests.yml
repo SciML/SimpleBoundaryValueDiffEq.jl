@@ -3,13 +3,13 @@ name: "Tests"
 on:
   pull_request:
     branches:
-      - main
+      - master
       - 'release-'
     paths-ignore:
       - 'docs/**'
   push:
     branches:
-      - main
+      - master
     paths-ignore:
       - 'docs/**'
 
@@ -17,30 +17,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_name != github.event.repository.default_branch || github.ref != 'refs/tags/v*' }}
 
-env:
-  RETESTITEMS_NWORKERS: 4
-  RETESTITEMS_NWORKERS_THREADS: 2
-
 jobs:
   tests:
     name: "Tests"
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - "1"
-          - "lts"
-          - "pre"
-        group:
-          - "Core"
-          - "NoPre"
-        os:
-          - "ubuntu-latest"
-          - "macOS-latest"
-          - "windows-latest"
-    uses: "SciML/.github/.github/workflows/tests.yml@v1"
-    with:
-      julia-version: "${{ matrix.version }}"
-      group: "${{ matrix.group }}"
-      os: "${{ matrix.os }}"
+    uses: "SciML/.github/.github/workflows/grouped-tests.yml@v1"
     secrets: "inherit"
