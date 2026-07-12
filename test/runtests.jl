@@ -19,6 +19,10 @@ run_tests(;
             include(joinpath(@__DIR__, "shooting_tests.jl"))
         end
     end,
+    qa = () -> begin
+        activate_group_env(joinpath(@__DIR__, "qa"))
+        include(joinpath(@__DIR__, "qa", "qa.jl"))
+    end,
     groups = Dict(
         # `env` is left off the group entry so this group also runs under "All",
         # matching the original `GROUP == "All" || GROUP == "NoPre" && ...` branch.
