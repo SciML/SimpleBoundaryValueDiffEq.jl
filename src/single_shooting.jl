@@ -71,9 +71,9 @@ function DiffEqBase.solve(
             J,
             u,
             p,
-        ) -> FiniteDiff.finite_difference_jacobian!(J, (resid, y) -> loss(resid, y, p), u)
+        ) -> __finite_difference_jacobian!(J, (resid, y) -> loss(resid, y, p), u)
     else
-        (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
+        (u, p) -> __finite_difference_jacobian(y -> loss(y, p), u)
     end
 
     nlfun = NonlinearFunction(loss, jac = jac)

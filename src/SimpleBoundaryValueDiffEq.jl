@@ -4,7 +4,6 @@ using Reexport: @reexport
 import CommonSolve: solve!
 import DiffEqBase
 import DiffEqBase: solve
-import FiniteDiff
 import SciMLBase
 @reexport using SciMLBase
 using OrdinaryDiffEqTsit5: Tsit5

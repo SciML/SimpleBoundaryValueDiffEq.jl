@@ -134,9 +134,9 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
         (
             J, u,
             p,
-        ) -> FiniteDiff.finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
+        ) -> __finite_difference_jacobian!(J, (res, y) -> loss(res, y, p), u)
     else
-        (u, p) -> FiniteDiff.finite_difference_jacobian(y -> loss(y, p), u)
+        (u, p) -> __finite_difference_jacobian(y -> loss(y, p), u)
     end
 
     nlfun = NonlinearFunction(loss, jac = jac)

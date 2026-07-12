@@ -34,6 +34,38 @@ end
     return y
 end
 
+function __finite_difference_jacobian(f, u)
+    fu = f(u)
+    J = similar(fu, length(fu), length(u))
+    tmp = similar(fu)
+    x = copy(u)
+    __finite_difference_jacobian_columns!(J, fu, tmp, f, x)
+    return J
+end
+
+function __finite_difference_jacobian!(J, f!, u)
+    x = copy(u)
+    fu = similar(u, size(J, 1))
+    tmp = similar(fu)
+    f!(fu, x)
+    __finite_difference_jacobian_columns!(J, fu, tmp, (y) -> f!(tmp, y), x)
+    return J
+end
+
+function __finite_difference_jacobian_columns!(J, fu, tmp, f, x)
+    for j in eachindex(x)
+        xj = x[j]
+        h = sqrt(eps(Float64)) * max(abs(xj), one(abs(xj)))
+        x[j] = xj + h
+        fx = f(x)
+        for i in eachindex(fu)
+            J[i, j] = (fx[i] - fu[i]) / h
+        end
+        x[j] = xj
+    end
+    return J
+end
+
 function eval_bc_residual!(residual, y, mesh, prob, pt::StandardBVProblem)
     return prob.f.bc(residual, y, prob.p, mesh)
 end
