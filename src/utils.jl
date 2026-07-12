@@ -34,25 +34,25 @@ end
     return y
 end
 
-function eval_bc_residual!(residual, y, mesh, prob, pt::SciMLBase.StandardBVProblem)
+function eval_bc_residual!(residual, y, mesh, prob, pt::StandardBVProblem)
     return prob.f.bc(residual, y, prob.p, mesh)
 end
 
-function eval_bc_residual(y, mesh, prob, pt::SciMLBase.StandardBVProblem)
+function eval_bc_residual(y, mesh, prob, pt::StandardBVProblem)
     return prob.f.bc(y, prob.p, mesh)
 end
 
-function eval_bc_residual!(residual, y, t, prob, pt::SciMLBase.TwoPointBVProblem)
+function eval_bc_residual!(residual, y, t, prob, pt::TwoPointBVProblem)
     length_a = length(prob.f.bcresid_prototype[1])
     length_b = length(prob.f.bcresid_prototype[2])
-    ua = y isa SciMLBase.ODESolution ? y(first(t)) : y[1]
-    ub = y isa SciMLBase.ODESolution ? y(last(t)) : y[end]
+    ua = y isa ODESolution ? y(first(t)) : y[1]
+    ub = y isa ODESolution ? y(last(t)) : y[end]
     @views first(prob.f.bc)(residual[1:length_a], ua, prob.p)
     return @views last(prob.f.bc)(residual[(length_a + 1):(length_a + length_b)], ub, prob.p)
 end
 
-function eval_bc_residual(y, t, prob, pt::SciMLBase.TwoPointBVProblem)
-    ua = y isa SciMLBase.ODESolution ? y(first(t)) : y[1]
-    ub = y isa SciMLBase.ODESolution ? y(last(t)) : y[end]
+function eval_bc_residual(y, t, prob, pt::TwoPointBVProblem)
+    ua = y isa ODESolution ? y(first(t)) : y[1]
+    ub = y isa ODESolution ? y(last(t)) : y[end]
     return vcat(first(prob.f.bc)(ua, prob.p), last(prob.f.bc)(ub, prob.p))
 end

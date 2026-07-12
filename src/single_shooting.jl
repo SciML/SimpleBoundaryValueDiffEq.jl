@@ -1,3 +1,32 @@
+"""
+    SimpleShooting(; nlsolve = SimpleNewtonRaphson(), ode_alg = Tsit5())
+
+A single shooting boundary value problem method for solving `BVProblem` and
+`TwoPointBVProblem` instances through the SciMLBase `solve` interface. The
+method integrates an internal initial value problem with `ode_alg` and solves
+for the initial condition that satisfies the boundary residual using `nlsolve`.
+
+# Keyword Arguments
+
+  - `nlsolve`: nonlinear solver algorithm used for the boundary residual
+    matching problem. Defaults to `SimpleNewtonRaphson()`.
+  - `ode_alg`: ODE solver algorithm used for the internal initial value problem.
+    Defaults to `Tsit5()`.
+
+# Fields
+
+  - `nlsolve`: the nonlinear solver algorithm stored for the internal
+    `NonlinearProblem`.
+  - `ode_alg`: the ODE solver algorithm used by the internal `ODEProblem`.
+
+# Usage
+
+```julia
+using SimpleBoundaryValueDiffEq
+
+sol = solve(prob, SimpleShooting(); abstol = 1.0e-8, reltol = 1.0e-8)
+```
+"""
 struct SimpleShooting{N, O} <: AbstractSimpleShooting
     nlsolve::N
     ode_alg::O
@@ -57,7 +86,7 @@ function DiffEqBase.solve(
         reltol = reltol, odesolve_kwargs...
     )
 
-    return DiffEqBase.build_solution(
+    return build_solution(
         prob, alg, odesol.t, odesol.u, retcode = odesol.retcode, resid = nlsol.resid
     )
 end

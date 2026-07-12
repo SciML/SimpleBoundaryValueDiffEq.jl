@@ -1,13 +1,85 @@
+"""
+    SimpleMIRK4(; nlsolve = SimpleNewtonRaphson())
+
+A fourth-order mono-implicit Runge-Kutta method for solving `BVProblem` and
+`TwoPointBVProblem` instances through the SciMLBase `solve` interface.
+
+# Keyword Arguments
+
+  - `nlsolve`: nonlinear solver algorithm used for the collocation nonlinear
+    system. Defaults to `SimpleNewtonRaphson()`.
+
+# Fields
+
+  - `nlsolve`: the nonlinear solver algorithm stored for the internal
+    `NonlinearProblem`.
+
+# Usage
+
+```julia
+using SimpleBoundaryValueDiffEq
+
+sol = solve(prob, SimpleMIRK4(); dt = 0.05)
+```
+"""
 struct SimpleMIRK4{N} <: AbstractSimpleMIRK
     nlsolve::N
 end
 SimpleMIRK4(; nlsolve = SimpleNewtonRaphson()) = SimpleMIRK4(nlsolve)
 
+"""
+    SimpleMIRK5(; nlsolve = SimpleNewtonRaphson())
+
+A fifth-order mono-implicit Runge-Kutta method for solving `BVProblem` and
+`TwoPointBVProblem` instances through the SciMLBase `solve` interface.
+
+# Keyword Arguments
+
+  - `nlsolve`: nonlinear solver algorithm used for the collocation nonlinear
+    system. Defaults to `SimpleNewtonRaphson()`.
+
+# Fields
+
+  - `nlsolve`: the nonlinear solver algorithm stored for the internal
+    `NonlinearProblem`.
+
+# Usage
+
+```julia
+using SimpleBoundaryValueDiffEq
+
+sol = solve(prob, SimpleMIRK5(); dt = 0.05)
+```
+"""
 struct SimpleMIRK5{N} <: AbstractSimpleMIRK
     nlsolve::N
 end
 SimpleMIRK5(; nlsolve = SimpleNewtonRaphson()) = SimpleMIRK5(nlsolve)
 
+"""
+    SimpleMIRK6(; nlsolve = SimpleNewtonRaphson())
+
+A sixth-order mono-implicit Runge-Kutta method for solving `BVProblem` and
+`TwoPointBVProblem` instances through the SciMLBase `solve` interface.
+
+# Keyword Arguments
+
+  - `nlsolve`: nonlinear solver algorithm used for the collocation nonlinear
+    system. Defaults to `SimpleNewtonRaphson()`.
+
+# Fields
+
+  - `nlsolve`: the nonlinear solver algorithm stored for the internal
+    `NonlinearProblem`.
+
+# Usage
+
+```julia
+using SimpleBoundaryValueDiffEq
+
+sol = solve(prob, SimpleMIRK6(); dt = 0.05)
+```
+"""
 struct SimpleMIRK6{N} <: AbstractSimpleMIRK
     nlsolve::N
 end
@@ -30,7 +102,7 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     dt ≤ 0 && throw(ArgumentError("dt must be positive"))
     N = Int(cld(prob.tspan[2] - prob.tspan[1], dt))
     mesh = collect(range(prob.tspan[1], prob.tspan[2], length = N + 1))
-    iip = SciMLBase.isinplace(prob)
+    iip = isinplace(prob)
     pt = prob.problem_type
 
     stage = alg_stage(alg)
@@ -72,7 +144,7 @@ function DiffEqBase.solve(prob::BVProblem, alg::AbstractSimpleMIRK; dt = 0.0, kw
     nlsol = solve(nlprob, alg.nlsolve)
     u = recursive_unflatten!(y, nlsol.u)
 
-    return DiffEqBase.build_solution(prob, alg, mesh, u; retcode = nlsol.retcode)
+    return build_solution(prob, alg, mesh, u; retcode = nlsol.retcode)
 end
 
 @inline function __extract_details(prob::BVProblem, N::Integer)
