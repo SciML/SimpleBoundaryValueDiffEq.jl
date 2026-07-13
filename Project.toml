@@ -1,7 +1,7 @@
 name = "SimpleBoundaryValueDiffEq"
 uuid = "be0294bd-f90f-4760-ac4e-3421ce2b2da0"
 authors = ["Avik Pal <avikpal@mit.edu> and contributors"]
-version = "1.4.2"
+version = "1.4.3"
 
 [deps]
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
