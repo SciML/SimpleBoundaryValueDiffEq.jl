@@ -1,5 +1,3 @@
 using SciMLTesting, SimpleBoundaryValueDiffEq, JET
 
-run_qa(
-    SimpleBoundaryValueDiffEq;
-)
+run_qa(SimpleBoundaryValueDiffEq)
