@@ -1,4 +1,5 @@
 using SimpleBoundaryValueDiffEq, LinearAlgebra, Test
+using SciMLBase: BVProblem, TwoPointBVProblem, solve, successful_retcode
 
 tspan = (0.0, 100.0)
 u0 = [0.0, 1.0]
@@ -45,6 +46,6 @@ bvp4 = TwoPointBVProblem(f1, (bc2a, bc2b), u0, tspan)
 
 for prob in (bvp1, bvp2, bvp3, bvp4)
     sol = solve(prob, SimpleShooting(), abstol = 1.0e-8, reltol = 1.0e-8)
-    @test SciMLBase.successful_retcode(sol)
+    @test successful_retcode(sol)
     @test norm(sol.resid, Inf) < 1.0e-8
 end
